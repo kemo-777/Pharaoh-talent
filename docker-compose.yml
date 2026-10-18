@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pharaoh_talent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pharaoh_talent_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pharaoh_talent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET in .env}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?Set PUBLIC_APP_URL to your public HTTPS URL}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to postgresql://postgres:URL_ENCODED_PASSWORD@postgres:5432/pharaoh_talent}
+      PGSSL: disable
+      EMAIL_VERIFICATION_REQUIRED: "true"
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM to a verified sender}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - pharaoh_talent_data:/app/data
+volumes:
+  pharaoh_talent_pg:
+  pharaoh_talent_data:

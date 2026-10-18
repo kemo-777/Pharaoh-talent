@@ -1,0 +1,54 @@
+# Render Blueprint for the full application. Review provider pricing before applying.
+services:
+  - type: web
+    name: pharaoh-talent
+    runtime: node
+    plan: starter
+    buildCommand: npm install --omit=dev --no-audit --no-fund
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: pharaoh-talent-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /app/data
+      - key: PUBLIC_APP_URL
+        value: https://pharaoh-talent.onrender.com
+      - key: APP_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pharaoh-talent-db
+          property: connectionString
+      - key: PGSSL
+        value: verify-full
+      - key: PGSSL_REJECT_UNAUTHORIZED
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: EMAIL_VERIFICATION_REQUIRED
+        value: "true"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: PG_POOL_MAX
+        value: "5"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "180"
+      - key: AUTH_RATE_LIMIT_PER_MINUTE
+        value: "12"
+      - key: IDENTITY_RATE_LIMIT_PER_MINUTE
+        value: "8"
+databases:
+  - name: pharaoh-talent-db
+    plan: basic-256mb
+    databaseName: pharaoh_talent
+    user: pharaoh_talent_app
