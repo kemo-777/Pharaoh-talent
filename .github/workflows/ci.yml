@@ -9,6 +9,20 @@ jobs:
   test:
     name: Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pharaoh_test
+          POSTGRES_PASSWORD: pharaoh_test_password
+          POSTGRES_DB: pharaoh_talent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pharaoh_test -d pharaoh_talent_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +43,14 @@ jobs:
           node --check public/reset-password.js
           node --check public/verify-email.js
           node --check public/guardian-consent.js
+          node --check docs/app.js
           node --check lib/relational-store.js
-      - name: Run automated tests
+      - name: Run unit and API tests
         run: npm test
+      - name: Run live PostgreSQL migration and persistence test
+        env:
+          TEST_DATABASE_URL: postgres://pharaoh_test:pharaoh_test_password@127.0.0.1:5432/pharaoh_talent_test
+          TEST_PGSSL: disable
+        run: node --test tests/postgres.integration.test.js
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

@@ -1,6 +1,6 @@
-# PHARAOH TALENT — Security and launch gate
+# PHARAOH TALENT 1.9.0 — Security and launch gate
 
-This document describes controls in the 1.8.0 prototype and the work that remains. It is not a penetration-test certificate.
+This document describes controls in release 1.9.0 and the work that remains. It is not a penetration-test certificate.
 
 ## Controls currently implemented
 
@@ -14,6 +14,13 @@ This document describes controls in the 1.8.0 prototype and the work that remain
 - Email verification and reset tokens are stored as digests and expire after 30 minutes.
 - PostgreSQL entities are stored in separate column-based tables with foreign keys, uniqueness constraints and indexes. Startup applies a transactional schema migration under a schema advisory lock; mutations are serialized with a separate advisory lock and the app reloads entity rows before mutation.
 - Production refuses to start without a strong app secret, HTTPS public URL, PostgreSQL URL, mandatory email verification and Resend credentials.
+
+## Additional 1.9.0 controls
+
+- Cookie-authenticated browser mutations are rejected if neither a matching `Origin` nor same-origin Fetch Metadata is present. Explicit Bearer-token API clients remain supported.
+- `/api/health` now verifies PostgreSQL connectivity and returns `503` if the database cannot be reached, so the hosting health check can detect a database outage.
+- The process has explicit request/header/keep-alive limits and handles `SIGTERM`/`SIGINT` with graceful HTTP and database-pool shutdown.
+- CI includes release-configuration checks and a PostgreSQL 16 migration/persistence round-trip against an isolated disposable database. The database integration result must be checked in the GitHub Actions run; it has not been run in this local environment.
 
 ## Known security and architecture limits
 

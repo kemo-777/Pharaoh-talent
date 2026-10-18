@@ -16,7 +16,7 @@ const MAX_BODY = 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true, mode: 0o700 });
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.9.0';
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || '';
@@ -174,6 +174,8 @@ function validateRequestOrigin(req, res, url) {
   if (!['POST','PUT','PATCH','DELETE'].includes(req.method) || !url.pathname.startsWith('/api/')) return true;
   const origin = req.headers.origin;
   const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+  const authorization = String(req.headers.authorization || '');
+  const hasSessionCookie = String(req.headers.cookie || '').split(';').some(part => part.trim().startsWith('pt_session='));
   if (fetchSite === 'cross-site') { json(res, 403, {error:'تم رفض الطلب لأنه قادم من موقع آخر.'}); return false; }
   if (origin) {
     let parsed;
@@ -182,9 +184,14 @@ function validateRequestOrigin(req, res, url) {
     if (!requestHost || parsed.host.toLowerCase() !== requestHost || !['http:','https:'].includes(parsed.protocol)) {
       json(res, 403, {error:'مصدر الطلب غير مسموح.'}); return false;
     }
+  } else if (hasSessionCookie && !authorization.startsWith('Bearer ') && fetchSite !== 'same-origin') {
+    // Cookie-authenticated browser mutations must carry an origin or Fetch Metadata.
+    // Explicit Bearer-token API clients remain usable without browser Origin headers.
+    json(res, 403, {error:'تعذر التحقق من مصدر الطلب. أعد المحاولة من داخل الموقع.'}); return false;
   }
   return true;
 }
+
 function limitIdentity(email, route, res) {
   const value=String(email||'').trim().toLowerCase(); if(!value || value.length>180) return true;
   const now=Date.now(), key=route+':'+value; let r=identityRate.get(key); if(!r||now-r.start>RATE_WINDOW_MS) r={start:now,count:0}; r.count++; identityRate.set(key,r);
@@ -334,7 +341,13 @@ async function requestAiMatch(talent, opportunities) {
 }
 async function handleApi(req,res,url) {
   const method=req.method; const p=url.pathname; const user=getAuth(req);
-  if(method==='GET' && p==='/api/health') return json(res,200,{ok:true,service:'PHARAOH TALENT',version:APP_VERSION,time:new Date().toISOString()});
+  if(method==='GET' && p==='/api/health') {
+    if (pgPool) {
+      try { await pgPool.query('SELECT 1'); }
+      catch { return json(res,503,{ok:false,service:'PHARAOH TALENT',version:APP_VERSION,dependency:'database',time:new Date().toISOString()}); }
+    }
+    return json(res,200,{ok:true,service:'PHARAOH TALENT',version:APP_VERSION,storage:pgPool?'postgresql':'local-development',time:new Date().toISOString()});
+  }
   if(method==='GET' && p==='/api/public/stats') return json(res,200,{talents:db.talents.filter(t=>t.visibility==='public').length,opportunities:db.opportunities.filter(o=>o.status==='open'&&(!o.deadline||o.deadline>=new Date().toISOString().slice(0,10))).length,organizations:db.users.filter(u=>orgRoles.includes(u.role)&&u.status==='active'&&u.verified===true).length});
   if(method==='POST' && p==='/api/auth/register') {
     const b=await bodyJson(req); const name=cleanString(b.name,100), email=cleanString(b.email,180).toLowerCase(), password=typeof b.password==='string'?b.password:''; const role=cleanString(b.role,30); if(!limitIdentity(email,p,res)) return;
@@ -534,5 +547,18 @@ server.keepAliveTimeout = 5_000;
 server.maxRequestsPerSocket = 500;
 server.maxHeadersCount = 100;
 server.maxConnections = Number(process.env.MAX_CONNECTIONS || 2000);
+let shutdownStarted = false;
+async function shutdown(signal) {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+  console.log(`Received ${signal}; shutting down gracefully.`);
+  const force = setTimeout(() => { console.error('Graceful shutdown timed out.'); process.exit(1); }, 10_000);
+  force.unref();
+  await new Promise(resolve => server.close(resolve));
+  try { await pgPool?.end(); } catch (e) { console.error('Database pool shutdown failed:', e.message); }
+  clearTimeout(force);
+}
+process.once('SIGTERM', () => { shutdown('SIGTERM').catch(e => { console.error(e); process.exitCode=1; }); });
+process.once('SIGINT', () => { shutdown('SIGINT').catch(e => { console.error(e); process.exitCode=1; }); });
 if (require.main === module) startServer();
 module.exports={server,hashPassword,matchScore,initPostgres};

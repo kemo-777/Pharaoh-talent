@@ -1,4 +1,4 @@
-# PHARAOH TALENT 1.8.1 — Talent Discovery Platform
+# PHARAOH TALENT 1.9.0 — Talent Discovery Platform
 
 An Arabic-first, responsive talent discovery platform with a Node.js HTTP API, local JSON development storage, and column-based PostgreSQL persistence for deployment. It runs on Node.js 20+; PostgreSQL mode requires the `pg` dependency and database configuration.
 
@@ -18,6 +18,7 @@ An Arabic-first, responsive talent discovery platform with a Node.js HTTP API, l
 - Optional OpenAI-compatible AI matching endpoint with strict timeouts and a transparent local skill/category fallback. AI is advisory only.
 - PostgreSQL persistence now uses separate column-based tables for users, talents, opportunities, applications, messages, saved items, reports, audit events, tokens, organization verification, videos, guardian consent requests and guardian-child links. Foreign keys, uniqueness constraints and indexes are applied. A one-time transactional migration backfills prior per-entity JSONB payloads into columns and drops the payload columns. Database schema upgrades are serialized with an advisory lock; application writes also use a separate advisory lock. This is a major relational migration, but live PostgreSQL validation is still required before production.
 - Local JSON backup command.
+- Version 1.9.0: database-aware health checks, stricter cookie-authenticated mutation origin validation, graceful shutdown, explicit server timeouts, release regression tests, and CI-backed PostgreSQL migration/persistence integration checks.
 
 ## Run on Windows PowerShell
 
@@ -56,7 +57,7 @@ Restore overwrites current data. Backups are stored under `data/backups/`. Keep 
 
 ## Hosted deployment (Render + PostgreSQL)
 
-See [DEPLOY_RENDER.md](DEPLOY_RENDER.md) and review [DEVICE_COMPATIBILITY.md](DEVICE_COMPATIBILITY.md). The repository includes a `render.yaml` Blueprint and GitHub Actions CI workflow. These files prepare deployment but do not mean that a GitHub repository or hosted service has already been created. Review provider pricing before applying the Blueprint; it provisions paid resources. Persistent video storage is configured for a single web instance.
+See [DEPLOY_RENDER.md](DEPLOY_RENDER.md), [DEVICE_COMPATIBILITY.md](DEVICE_COMPATIBILITY.md), and [RELEASE_READINESS.md](RELEASE_READINESS.md). The repository includes a `render.yaml` Blueprint and GitHub Actions CI workflow. These files prepare deployment but do not mean that a GitHub repository or hosted service has already been created. Review provider pricing before applying the Blueprint; it provisions paid resources. Persistent video storage is configured for a single web instance.
 
 ## Docker Compose deployment
 
@@ -142,9 +143,10 @@ Stop the app and delete `data/db.json` only if you intentionally want to reset a
 At the time of version 1.6.0, PostgreSQL still used a JSONB snapshot; version 1.8.0 replaces that layout with explicit entity columns. This is still a prototype, not a guarantee of production readiness, and no live PostgreSQL migration/concurrency test has been run. The email provider was not live-tested, and mailbox confirmation is not legal guardian identity verification. Video files are stored on the local filesystem, are not malware-scanned or transcoded, and are not included in JSON backups. There is no independent penetration test or external load test. Do not launch broadly until these gaps are resolved and a child-safety/privacy review is completed.
 
 
-## Version 1.8.1 deployment preparation
+## Version 1.9.0 release hardening
 
 - Added a Render Blueprint for the full Node.js service, managed PostgreSQL, required HTTPS/email verification configuration, and persistent media disk.
 - Added GitHub Actions CI on Node.js 20 and 22.
 - Added hosting and device compatibility checklists.
-- No live cloud deployment, live PostgreSQL validation, physical-device test, or external security/load test is implied by these configuration additions.
+- Added database-aware readiness health checks, stricter CSRF/origin handling for cookie-authenticated mutations, graceful shutdown, release regression tests, and a PostgreSQL integration test wired into CI.
+- No live cloud deployment, local live-PostgreSQL validation, physical-device test, or external security/load test is implied by these configuration additions.

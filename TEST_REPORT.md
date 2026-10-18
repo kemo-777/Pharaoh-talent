@@ -1,3 +1,17 @@
+# PHARAOH TALENT 1.9.0 — Current verification status
+
+## Checks executed in the current build environment
+
+- `npm run preflight` — passed.
+- Syntax checks for server, browser scripts, and relational storage — passed.
+- `npm test` — **8 passed, 0 failed, 1 skipped**. The skipped test is the live PostgreSQL migration/persistence test because this environment has no `TEST_DATABASE_URL` and could not install the `pg` dependency after the package registry request timed out.
+- New automated release checks cover version consistency, Pages static-preview paths/scope, responsive CSS foundations, production environment guardrails, CSRF/origin enforcement, and existing account/video/guardian flows.
+- GitHub Actions is configured to install dependencies, run the normal test suite, run the PostgreSQL integration test against an isolated PostgreSQL 16 service, and audit production dependencies. Those remote workflow steps have **not been run from this local build**.
+
+This does **not** mean the app is deployed to a full backend host, that live PostgreSQL has been tested here, or that an independent security audit has been completed. See [RELEASE_READINESS.md](RELEASE_READINESS.md) for remaining release gates.
+
+---
+
 # PHARAOH TALENT 1.8.0 — Test report
 
 ## Automated checks executed in this environment

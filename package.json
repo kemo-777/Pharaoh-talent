@@ -1,15 +1,17 @@
 {
   "name": "pharaoh-talent",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "private": true,
-  "description": "Arabic-first talent discovery platform with parent dashboards, gated talent videos, admin moderation, HttpOnly sessions and relational PostgreSQL storage",
+  "description": "Arabic-first talent discovery platform with guardian privacy controls, moderated videos, hardened sessions and PostgreSQL persistence",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test tests/*.test.js",
     "backup": "node scripts/backup.js",
-    "restore": "node scripts/restore.js"
+    "restore": "node scripts/restore.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/reset-password.js && node --check public/verify-email.js && node --check public/guardian-consent.js && node --check docs/app.js && node --check lib/relational-store.js",
+    "preflight": "npm run check && npm test"
   },
   "engines": {
     "node": ">=20.12.0"
